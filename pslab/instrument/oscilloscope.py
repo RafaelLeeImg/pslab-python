@@ -12,6 +12,7 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
+import struct
 import pslab.protocol as CP
 from pslab.bus.spi import SPIMaster
 from pslab.instrument.analog import ANALOG_CHANNELS, AnalogInput, GAIN_VALUES
@@ -188,7 +189,7 @@ class Oscilloscope(ADCBufferMixin):
         self._invalidate_buffer()
         chosa = self._channels[self._channel_one_map].chosa
         self._channels[self._channel_one_map].resolution = 10
-        self._device.send_byte(CP.ADC)
+        send_data = [CP.ADC]
 
         CH123SA = 0  # TODO what is this?
         chosa = self._channels[self._channel_one_map].chosa
@@ -196,31 +197,31 @@ class Oscilloscope(ADCBufferMixin):
         self._channels[self._channel_one_map].buffer_idx = 0
         if channels == 1:
             if self.trigger_enabled:
-                self._device.send_byte(CP.CAPTURE_ONE)
-                self._device.send_byte(chosa | 0x80)  # Trigger
+                send_data.append(CP.CAPTURE_ONE)
+                send_data.append(struct.pack("B", chosa | 0x80))  # Trigger
             elif timegap >= 1:
                 self._channels[self._channel_one_map].resolution = 12
-                self._device.send_byte(CP.CAPTURE_DMASPEED)
-                self._device.send_byte(chosa | 0x80)  # 12-bit mode
+                send_data.append(CP.CAPTURE_DMASPEED)
+                send_data.append(struct.pack("B", chosa | 0x80))  # 12-bit mode
             else:
-                self._device.send_byte(CP.CAPTURE_DMASPEED)
-                self._device.send_byte(chosa)  # 10-bit mode
+                send_data.append(CP.CAPTURE_DMASPEED)
+                send_data.append(struct.pack("B", chosa))  # 10-bit mode
         elif channels == 2:
             self._channels["CH2"].resolution = 10
             self._channels["CH2"].samples_in_buffer = samples
             self._channels["CH2"].buffer_idx = 1 * samples
-            self._device.send_byte(CP.CAPTURE_TWO)
-            self._device.send_byte(chosa | (0x80 * self.trigger_enabled))
+            send_data.append(CP.CAPTURE_TWO)
+            send_data.append(struct.pack("B", chosa | (0x80 * self.trigger_enabled)))
         else:
             for e, c in enumerate(self._CH234):
                 self._channels[c].resolution = 10
                 self._channels[c].samples_in_buffer = samples
                 self._channels[c].buffer_idx = (e + 1) * samples
-            self._device.send_byte(CP.CAPTURE_FOUR)
-            self._device.send_byte(
-                chosa | (CH123SA << 4) | (0x80 * self.trigger_enabled)
-            )
+            send_data.append(CP.CAPTURE_FOUR)
+            send_data.append(struct.pack("B", chosa | (CH123SA << 4) |
+                                         (0x80 * self.trigger_enabled)))
 
+        self._device.send(b''.join(send_data))
         self._device.send_int(samples)
         self._device.send_int(int(timegap * 8))  # 8 MHz clock
         self._device.get_ack()
@@ -264,8 +265,7 @@ class Oscilloscope(ADCBufferMixin):
             A boolean indicating whether the capture is complete, followed by
             the number of samples currently held in the buffer.
         """
-        self._device.send_byte(CP.ADC)
-        self._device.send_byte(CP.GET_CAPTURE_STATUS)
+        self._device.send(CP.ADC + CP.GET_CAPTURE_STATUS)
         conversion_done = self._device.get_byte()
         samples = self._device.get_int()
         self._device.get_ack()
@@ -326,10 +326,11 @@ class Oscilloscope(ADCBufferMixin):
         else:
             raise TypeError(f"Cannot trigger on {self.trigger_channel}.")
 
-        self._device.send_byte(CP.ADC)
-        self._device.send_byte(CP.CONFIGURE_TRIGGER)
         # Trigger channel (4lsb) , trigger timeout prescaler (4msb)
-        self._device.send_byte((prescaler << 4) | (1 << channel))  # TODO prescaler?
+        # TODO prescaler?
+        send_data = CP.ADC + CP.CONFIGURE_TRIGGER + \
+            struct.pack("B", (prescaler << 4) | (1 << channel))
+        self._device.send(send_data)
         level = self._channels[self.trigger_channel].unscale(voltage)
         self._device.send_int(level)
         self._device.get_ack()
@@ -383,10 +384,9 @@ class Oscilloscope(ADCBufferMixin):
         self._channels[channel].gain = gain
         pga = self._channels[channel].programmable_gain_amplifier
         gain_idx = GAIN_VALUES.index(gain)
-        self._device.send_byte(CP.ADC)
-        self._device.send_byte(CP.SET_PGA_GAIN)
-        self._device.send_byte(pga)
-        self._device.send_byte(gain_idx)
+        send_data = CP.ADC + CP.SET_PGA_GAIN + \
+            struct.pack("B", pga) + struct.pack("B", gain_idx)
+        self._device.send(send_data)
         self._device.get_ack()
 
         if not spi_config_supported:

@@ -317,6 +317,22 @@ class SerialHandler:
 
         self.write(packet)
 
+    def send(self, value: bytes):
+        """Send bytes to the PSLab.
+
+        Parameters
+        ----------
+        value :
+            Value to send to PSLab. Must be bytes.
+        """
+        if isinstance(value, bytes):
+            packet = value
+        else:
+            packer = self._get_integer_type(size)
+            packet = packer.pack(value)
+
+        self.write(packet)
+
     def _receive(self, size: int) -> int:
         """Read and unpack data from the serial port.
 
@@ -509,8 +525,7 @@ class ADCBufferMixin:
         received : list of int
             List of received samples.
         """
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.RETRIEVE_BUFFER)
+        self._device.send(CP.COMMON + CP.RETRIEVE_BUFFER)
         self._device.send_int(starting_position)
         self._device.send_int(samples)
         received = [self._device.get_int() for i in range(samples)]
@@ -528,8 +543,7 @@ class ADCBufferMixin:
             Location in the ADC buffer to start from. By default samples will
             be cleared from the beginning of the buffer.
         """
-        self._device.send_byte(CP.COMMON)
-        self._device.send_byte(CP.CLEAR_BUFFER)
+        self._device.send(CP.COMMON + CP.CLEAR_BUFFER)
         self._device.send_int(starting_position)
         self._device.send_int(samples)
         self._device.get_ack()
