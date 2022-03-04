@@ -76,8 +76,16 @@ class SerialHandler:
     """
 
     #            V5      V6
+    # _USB_VID = [0x04D8]
+    # _USB_PID = [0x00DF]
     _USB_VID = [0x04D8, 0x10C4]
     _USB_PID = [0x00DF, 0xEA60]
+    # _USB_VID =         [0x10C4]
+    # _USB_PID =         [0xEA60]
+
+    #          v5 only
+    # _USB_VID = [0x04D8];#0x10C4]
+    # _USB_PID = [0x00DF];#0xEA60]
 
     def __init__(
         self,

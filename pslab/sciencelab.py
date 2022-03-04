@@ -47,8 +47,8 @@ class ScienceLab(SerialHandler):
         self.multimeter = Multimeter(device=self)
         self.power_supply = PowerSupply(device=self)
         self.i2c = I2CMaster(device=self)
-        self.spi = SPIMaster(device=self)
-        self.nrf = NRF24L01(device=self)
+        # self.spi = SPIMaster(device=self)
+        # self.nrf = NRF24L01(device=self)
 
         if "V6" in self.version:  # Set the built-in WS2812B to green :)
             self.rgb_led([0, 20, 0])

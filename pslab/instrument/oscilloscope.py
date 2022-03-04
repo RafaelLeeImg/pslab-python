@@ -212,6 +212,7 @@ class Oscilloscope(ADCBufferMixin):
             self._channels["CH2"].buffer_idx = 1 * samples
             send_data.append(CP.CAPTURE_TWO)
             send_data.append(struct.pack("B", chosa | (0x80 * self.trigger_enabled)))
+            # send_data.append(struct.pack("B", chosa | 0x80))
         else:
             for e, c in enumerate(self._CH234):
                 self._channels[c].resolution = 10
@@ -252,6 +253,7 @@ class Oscilloscope(ADCBufferMixin):
         for i, channel in enumerate(channels):
             samples = channel.samples_in_buffer
             data[i] = self.fetch_buffer(samples, channel.buffer_idx)
+            print ("i = %s,channel = %s, data[i] = %s"%(i,channel,data[i]))
             data[i] = channel.scale(np.array(data[i]))
 
         return data
@@ -386,6 +388,12 @@ class Oscilloscope(ADCBufferMixin):
         gain_idx = GAIN_VALUES.index(gain)
         send_data = CP.ADC + CP.SET_PGA_GAIN + \
             struct.pack("B", pga) + struct.pack("B", gain_idx)
+        for key in self._channels.keys():
+            value = self._channels[key].gain
+            if value:
+                print ("_set_gain: key = %s, value = %s"%(key, value))
+        print ("_set_gain: gain = %f"%gain)
+        print ("_set_gain: send_data = %s"%send_data)
         self._device.send(send_data)
         self._device.get_ack()
 
