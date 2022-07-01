@@ -29,8 +29,8 @@ ANALOG_CHANNELS = (
 )
 
 INPUT_RANGES = {
-    "CH1": (16.5, -16.5),  # Specify inverted channels explicitly by reversing range!
-    "CH2": (16.5, -16.5),
+    "CH1": (-16.5, 16.5),  # Specify inverted channels explicitly by reversing range!
+    "CH2": (-16.5, 16.5),
     "CH3": (-3.3, 3.3),  # external gain control analog input
     "MIC": (-3.3, 3.3),  # connected to MIC amplifier
     "CAP": (0, 3.3),
