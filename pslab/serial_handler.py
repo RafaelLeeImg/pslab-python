@@ -401,7 +401,7 @@ class SerialHandler:
         if self._logging:
             self._log += direction.encode() + data + "STOP".encode()
 
-    def wait_for_data(self, timeout: float = 0.2) -> bool:
+    def wait_for_data(self, timeout: float = 0.02) -> bool:
         """Wait for :timeout: seconds or until there is data in the input buffer.
 
         Parameters
@@ -419,7 +419,7 @@ class SerialHandler:
         while time.time() - start_time < timeout:
             if self.interface.in_waiting:
                 return True
-            time.sleep(0.02)
+            time.sleep(timeout)
 
         return False
 
