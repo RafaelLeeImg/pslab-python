@@ -60,7 +60,7 @@ def _get_version(port: str) -> str:
     interface.write(CP.COMMON)
     interface.write(CP.GET_VERSION)
     version = interface.readline()
-    return version.decode("utf-8")
+    return version.decode("iso8859-1")
 
 
 class SerialHandler:
