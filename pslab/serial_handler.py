@@ -47,10 +47,16 @@ def detect():
     port_info_generator = list_ports.grep(regex)
     pslab_devices = {}
 
+    port_info_list = []
     for port_info in port_info_generator:
+        port_info_list.append(port_info)
+    port_info_list.sort()
+
+    for port_info in port_info_list:
         version = _get_version(port_info.device)
         if any(expected in version for expected in ["PSLab", "CSpark"]):
             pslab_devices[port_info.device] = version
+            break
 
     return pslab_devices
 
