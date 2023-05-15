@@ -253,7 +253,7 @@ class Oscilloscope(ADCBufferMixin):
         for i, channel in enumerate(channels):
             samples = channel.samples_in_buffer
             data[i] = self.fetch_buffer(samples, channel.buffer_idx)
-            print ("i = %s,channel = %s, data[i] = %s"%(i,channel,data[i]))
+            # print ("i = %s,channel = %s, data[i] = %s"%(i,channel,data[i]))
             data[i] = channel.scale(np.array(data[i]))
 
         return data
