@@ -14,7 +14,6 @@ Examples
 """
 import numpy as np
 
-from pslab.bus.i2c import I2CSlave
 from pslab.serial_handler import SerialHandler
 
 
@@ -37,11 +36,10 @@ class PowerSupply:
 
     def __init__(self, device: SerialHandler = None):
         self._device = device if device is not None else SerialHandler()
-        self._mcp4728 = I2CSlave(self._ADDRESS, self._device)
-        self._pv1 = VoltageSource(self._mcp4728, "PV1")
-        self._pv2 = VoltageSource(self._mcp4728, "PV2")
-        self._pv3 = VoltageSource(self._mcp4728, "PV3")
-        self._pcs = CurrentSource(self._mcp4728)
+        self._pv1 = VoltageSource()
+        self._pv2 = VoltageSource()
+        self._pv3 = VoltageSource()
+        self._pcs = CurrentSource()
 
     @property
     def pv1(self):
@@ -168,15 +166,13 @@ class Source:
         command_byte = self._MULTI_WRITE | channel_select
         data_byte1 = (raw >> 8) & 0x0F
         data_byte2 = raw & 0xFF
-        self._mcp4728.write([data_byte1, data_byte2], register_address=command_byte)
 
 
 class VoltageSource(Source):
     """Helper class for interfacing with PV1, PV2, and PV3."""
 
-    def __init__(self, mcp4728: I2CSlave, name: str):
+    def __init__(self):
         self._voltage = 0
-        super().__init__(mcp4728, name)
 
     @property
     def voltage(self):
@@ -197,9 +193,8 @@ class VoltageSource(Source):
 class CurrentSource(Source):
     """Helper class for interfacing with PCS."""
 
-    def __init__(self, mcp4728: I2CSlave):
+    def __init__(self):
         self._current = 0
-        super().__init__(mcp4728, "PCS")
 
     @property
     def current(self):

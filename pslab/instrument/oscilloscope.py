@@ -137,6 +137,7 @@ class Oscilloscope(ADCBufferMixin):
 
         for channel in ("CH1", "CH2"):
             # Reset gain (another instance could have changed it).
+            # time.sleep(0.005)
             self._set_gain(channel, self._channels[channel].gain)
 
         self._capture(channels, samples, timegap)
