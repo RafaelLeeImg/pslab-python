@@ -96,7 +96,7 @@ class CCS811(I2CSlave):
     def setMeasureMode(self, mode):
         print(f'mode = {mode}')
         print(f'register = {self._MEAS_MODE}')
-        self.write([mode], self._MEAS_MODE)
+        self.write([mode << 4], self._MEAS_MODE)
 
     def getMeasureMode(self):
         print(self.read(10, self._MEAS_MODE))
@@ -104,6 +104,9 @@ class CCS811(I2CSlave):
     def getStatus(self):
         status = (self.read(1, self._STATUS))[0]
         print(f'status = {bin(int(status))}')
+        return status
+
+    def decodeStatus(self, status):
         # Bit(s) Field
         BIT_FW_MODE = 7
         BIT_APP_ERASE = 6
@@ -134,7 +137,12 @@ class CCS811(I2CSlave):
         eTVOC = data[2] * 256 + data[3]
         status = data[4]
         error_id = data[5]
+        raw_data = 256 * data[6] + data[7]
+        raw_current = raw_data >> 10
+        raw_voltage = (raw_data & ((1 << 10) - 1)) * (1.65 / 1023)
+
         print(f'eCO2 = {eCO2}, eTVOC = {eTVOC}, status = {status}, error_id = {error_id}')
+        print(f'current = {raw_current}, voltage = {raw_voltage}')
         if error_id == 0:
             # print("no_error")
             pass
