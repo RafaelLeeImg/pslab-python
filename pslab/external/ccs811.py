@@ -12,11 +12,11 @@ def debug_print(value):
 
 
 class CCS811(I2CSlave):
-    _MODE_IDLE = 0  # Idle (Measurements are disabled in this mode)
-    _MODE_CONTINUOUS = 1  # Constant power mode, IAQ measurement every 1s
-    _MODE_PULSE = 2  # Pulse heating mode IAQ measurement every 10 seconds
-    _MODE_LOW_POWER = 3  # Low power pulse heating mode IAQ measurement every 60 seconds
-    _MODE_CONTINUOUS_QUARTER = 4  # Constant power mode, sensor measurement every 250ms
+    MODE_IDLE = 0  # Idle (Measurements are disabled in this mode)
+    MODE_CONTINUOUS = 1  # Constant power mode, IAQ measurement every 1s
+    MODE_PULSE = 2  # Pulse heating mode IAQ measurement every 10 seconds
+    MODE_LOW_POWER = 3  # Low power pulse heating mode IAQ measurement every 60 seconds
+    MODE_CONTINUOUS_FAST = 4  # Constant power mode, sensor measurement every 250ms
 
     _ADDRESS = 0x5A
 
@@ -47,9 +47,6 @@ class CCS811(I2CSlave):
     _STATUS = 0x00
     _HW_ID = 0x20
     _HW_Version = 0x21
-    _FW_Boot_Version = 0x23
-    _FW_App_Version = 0x24
-    _ERROR_ID = 0xE0
     _APP_ERASE = 0xF1
     _APP_DATA = 0xF2
     _APP_VERIFY = 0xF3
@@ -57,37 +54,94 @@ class CCS811(I2CSlave):
     _SW_RESET = 0xFF
 
     def __init__(self, **args):
+        print("ccs811 __init__()")
+        # self.I2C = I2C
+        self._ADDRESS = args.get('address', self._ADDRESS)
+        # self.address = self._ADDRESS
+        super().__init__(self._ADDRESS)
+        self.fetchID()
         self.softwareReset()
 
     def softwareReset(self):
-        self._ADDRESS = args.get('address', self._ADDRESS)
-        super().__init__(self._ADDRESS)
-        self.I2C.writeBulk(self.ADDRESS, [0xff, 0x11, 0xe5, 0x72, 0x8a])
-        time.sleep(0.01)  # 10ms
-        self.I2C.readBulk(0, 100)  # read 100 bytes, clear the bus maybe?
+        print("software reset")
+        self.write([0x11, 0xe5, 0x72, 0x8a], self._SW_RESET)
+
+        # time.sleep(0.01)  # 10ms
+        # self.read(100, 0)  # read 100 bytes, from register 0 clear the bus maybe?
         # self.write(self._HW_ID)
-        hw_id = self.read(self._HW_ID)
+
+    def fetchID(self):
+        hardware_id = (self.read(1, self._HW_ID))[0]
+        print(f'hex(hardware_id) = {hex(hardware_id)}')
         time.sleep(0.02)  # 20ms
+        hardware_version = (self.read(1, self._HW_Version))[0]
+        print(f'hex(hardware_version) = {hex(hardware_version)}')
+        time.sleep(0.02)  # 20ms
+        boot_version = (self.read(2, self._FW_Boot_Version))[0]
+        print(f'hex(boot_version) = {hex(boot_version)}')
+        time.sleep(0.02)  # 20ms
+        app_version = (self.read(2, self._FW_App_Version))[0]
+        print(f'hex(app_version) = {hex(app_version)}')
+
+    def appErase(self):
+        ignore = self.write([0xE7, 0xA7, 0xE6, 0x09], self._APP_ERASE)
+        time.sleep(0.3)
 
     def appStart(self):
         # write to _APP_Start and read 9 bytes, ignore the result
-        ignore = self.read(self._APP_START)
-        self.I2C.readBulk(0, 9)
-        (display "after APP_START\n"))
+        # ignore = self.read(10, self._APP_START)
+        ignore = self.write([], self._APP_START)
+        print("after APP_START\n")
 
-    def setMeasureMode(self):
-        CCS811_REG_MEAS_MODE
-        pass
-
-    def getMeasureMode(self):
-        pass
+    def setMeasureMode(self, mode):
+        print(f'mode = {mode}')
+        print(f'register = {self._MEAS_MODE}')
+        self.write([mode], self._MEAS_MODE)
 
     def getMeasureMode(self):
-        pass
+        print(self.read(10, self._MEAS_MODE))
+
+    def getStatus(self):
+        status = (self.read(1, self._STATUS))[0]
+        print(f'status = {bin(int(status))}')
+        # Bit(s) Field
+        BIT_FW_MODE = 7
+        BIT_APP_ERASE = 6
+        BIT_APP_VERIFY = 5
+        BIT_APP_VALID = 4
+        BIT_DATA_READY = 3
+        # 2:1 -
+        BIT_ERROR = 0
+
+        if (status & (1 << BIT_FW_MODE)) > 0:
+            print("Sensor is in application mode")
+        else:
+            print("Sensor is in boot mode")
+        if (status & (1 << BIT_APP_ERASE)) > 0:
+            print("APP_ERASE")
+        if (status & (1 << BIT_APP_VERIFY)) > 0:
+            print("APP_VERIFY")
+        if (status & (1 << BIT_APP_VALID)) > 0:
+            print("APP_VALID")
+        if (status & (1 << BIT_DATA_READY)) > 0:
+            print("DATA_READY")
+        if (status & (1 << BIT_ERROR)) > 0:
+            print("ERROR")
 
     def measure(self):
-        pass
-
+        data = self.read(8, self._ALG_RESULT_DATA)
+        eCO2 = data[0] * 256 + data[1]
+        eTVOC = data[2] * 256 + data[3]
+        status = data[4]
+        error_id = data[5]
+        print(f'eCO2 = {eCO2}, eTVOC = {eTVOC}, status = {status}, error_id = {error_id}')
+        if error_id == 0:
+            # print("no_error")
+            pass
+        elif error_id == 1:
+            print("The CCS811 received an I²C read request to a mailbox ID that is invalid")
+        else:
+            print("Other error")
 
 
 def connect(route, **args):
