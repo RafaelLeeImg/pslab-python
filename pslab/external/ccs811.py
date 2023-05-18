@@ -1,5 +1,4 @@
 import time
-from numpy import int16
 from pslab.bus import I2CSlave
 
 
@@ -52,6 +51,15 @@ class CCS811(I2CSlave):
     _APP_VERIFY = 0xF3
     _APP_START = 0xF4
     _SW_RESET = 0xFF
+
+    # Bit(s) Field
+    _REG_STATUS_BIT_FW_MODE = 7
+    _REG_STATUS_BIT_APP_ERASE = 6
+    _REG_STATUS_BIT_APP_VERIFY = 5
+    _REG_STATUS_BIT_APP_VALID = 4
+    _REG_STATUS_BIT_DATA_READY = 3
+    # 2:1 -
+    _REG_STATUS_BIT_ERROR = 0
 
     def __init__(self, **args):
         print("ccs811 __init__()")
@@ -107,37 +115,38 @@ class CCS811(I2CSlave):
         return status
 
     def decodeStatus(self, status):
-        # Bit(s) Field
-        BIT_FW_MODE = 7
-        BIT_APP_ERASE = 6
-        BIT_APP_VERIFY = 5
-        BIT_APP_VALID = 4
-        BIT_DATA_READY = 3
-        # 2:1 -
-        BIT_ERROR = 0
 
-        if (status & (1 << BIT_FW_MODE)) > 0:
+        if (status & (1 << self._REG_STATUS_BIT_FW_MODE)) > 0:
             print("Sensor is in application mode")
         else:
             print("Sensor is in boot mode")
-        if (status & (1 << BIT_APP_ERASE)) > 0:
+        if (status & (1 << self._REG_STATUS_BIT_APP_ERASE)) > 0:
             print("APP_ERASE")
-        if (status & (1 << BIT_APP_VERIFY)) > 0:
+        if (status & (1 << self._REG_STATUS_BIT_APP_VERIFY)) > 0:
             print("APP_VERIFY")
-        if (status & (1 << BIT_APP_VALID)) > 0:
+        if (status & (1 << self._REG_STATUS_BIT_APP_VALID)) > 0:
             print("APP_VALID")
-        if (status & (1 << BIT_DATA_READY)) > 0:
+        if (status & (1 << self._REG_STATUS_BIT_DATA_READY)) > 0:
             print("DATA_READY")
-        if (status & (1 << BIT_ERROR)) > 0:
+        if (status & (1 << self._REG_STATUS_BIT_ERROR)) > 0:
             print("ERROR")
 
     def measure(self):
+        # while(1):
+        #     status = (self.read(1, self._STATUS))[0]
+        #     if (status & (1 << self._REG_STATUS_BIT_DATA_READY)) > 0:
+        #         break
+        #     print(f'status = {bin(int(status))}')
+        #     self.decodeStatus(status)
+        #     time.sleep(0.1)
+
         data = self.read(8, self._ALG_RESULT_DATA)
         eCO2 = data[0] * 256 + data[1]
         eTVOC = data[2] * 256 + data[3]
         status = data[4]
         error_id = data[5]
         raw_data = 256 * data[6] + data[7]
+        print(f'raw_data = {hex(int(raw_data))}')
         raw_current = raw_data >> 10
         raw_voltage = (raw_data & ((1 << 10) - 1)) * (1.65 / 1023)
 
